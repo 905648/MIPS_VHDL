@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------------------
 -- Company: 
--- Engineer: 
+-- Engineer: Sergio Saura, Pablo Gracia
 -- 
 -- Create Date:    13:14:28 04/07/2014 
 -- Design Name: 
