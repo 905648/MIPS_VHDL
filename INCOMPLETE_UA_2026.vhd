@@ -27,17 +27,24 @@ begin
 -- IMPORTANT: the JAL instruction is somewhat special because the data it writes to BR is different from the rest.
 -- Is it possible to use the forwarding network in the JAL-distance use cases 1 and 2? Is there any case that does not -- Can it happen in this processor -- What solution do you propose?
 -- Example: Jal r1, @jump; @jump: ADD R1, R2, R1; 
+    -- Para las instrucciones productoras aritmeticas
+    -- Si rs (Reg_Rs_EX) es igual a lo que se va escribir en memoria (RW_MEM) y se va a escribir en memoria (RegWrite_MEM) y que no hay parada (V=1) (valid_I_MEM)
 	Corto_A_Mem <= '1' when ((Reg_Rs_EX = RW_MEM) and (RegWrite_MEM = '1') and (valid_I_MEM = '1'))	else '0';
-	-- COMPLETE:
-	Corto_B_Mem <= '0';
-	Corto_A_WB	<= '0';
-	Corto_B_WB	<= '0';
+	Corto_B_Mem <= '1' when ((Reg_Rt_EX = RW_MEM) and (RegWrite_MEM = '1') and (valid_I_MEM = '1'))	else '0';
+	-- Para las instrucciones productoras de loads
+	-- Si rs (Reg_Rs_EX) es igual a lo que se va escribir en memoria (RW_WB) y se va a escribir en memoria (RegWrite_WB) y que no hay parada (V=1) (valid_I_WB)
+	Corto_A_WB	<= '1' when ((Reg_Rs_EX = RW_WB) and (RegWrite_WB = '1') and (valid_I_WB = '1')) else '0';
+	Corto_B_WB	<= '1' when ((Reg_Rs_EX = RW_WB) and (RegWrite_WB = '1') and (valid_I_WB = '1')) else '0';
 	-- With the above signals, the input of the muxes is chosen:
 	-- input 00: corresponds to the data from the register bank
 	-- input 01: data from the Mem stage
 	-- input 10: data from the WB stage
 	-- Complete: We give an example for the Corto_A_Mem, you must add the rest of cases
 	MUX_ctrl_A <= 	"01" when (Corto_A_Mem = '1') else
-					"00";
-	MUX_ctrl_B <= 	"00";	
+					"10" when (Corto_A_WB  = '1') else
+               		"00";
+	-- Se pone en el 10 al reves para que no se usen los mismos registros en las operaciones aritmeticas
+	MUX_ctrl_B <= 	"01" when (Corto_B_WB = '1') else  
+					"10" when (Corto_B_Mem  = '1') else
+               		"00";	
 end Behavioral;
