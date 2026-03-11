@@ -82,7 +82,7 @@ begin
 			-- COMPLETE
 			------------------------------------------------
 			-- JAL
-			WHEN  jal_opcode  	=>  jal <= '1';  -- Any more signals?
+			WHEN  jal_opcode  	=>  jal <= '1'; RegWrite <= '1';  -- Any more signals?
 			-- RET
 			WHEN  RET_opcode  	=>  ret <= '1'; -- Any more signals?
 			--RTE

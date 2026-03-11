@@ -415,7 +415,8 @@ begin
 				--x"0000000C" 		when (Exception_accepted = '1') and (UNDEF = '1') else -- If an UNDEF arrives, we jump to address 0x0000000C.
 				--x"00000004" 		when (Exception_accepted = '1') and (IRQ = '1') else -- If an IRQ arrives, jump to address 0x00000004
 				--Exception_LR_output when RTE_ID = '1' else 	--@ retorno. If it is an RTE we revert to the @ we had stored in the Exception_LR			
-				-- Entrada para el RET, poned lo que toque: 				when RET_ID = '1' else 	--The address stored in the Rs register outgoing from port A of the BR is chosen.
+				-- Entrada para el RET, poned lo que toque: 				
+				BUSa				when RET_ID = '1' else 	--The address stored in the Rs register outgoing from port A of the BR is chosen.
 				Dirsalto_ID 		when salto_tomado = '1' else --@ Jump of the BEQ and JAL. The RTE and RET may also activate the "salto_tomado" signal, but  but due to the order of the sentence, RET or RTE will be chosen first			PC4; -- PC+4
 				PC4; -- PC+4
 								
