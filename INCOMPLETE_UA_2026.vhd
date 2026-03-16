@@ -18,7 +18,7 @@ entity UA is
 	end UA;
 
 Architecture Behavioral of UA is
-signal Corto_A_Mem, Corto_B_Mem, Corto_A_WB, Corto_B_WB: std_logic;
+signal Corto_A_Mem, Corto_B_Mem, Corto_A_WB, Corto_B_WB, Corto_A_JAL_Mem, Corto_B_JAL_Mem: std_logic;
 begin
 
 
