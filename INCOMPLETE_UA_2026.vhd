@@ -35,7 +35,7 @@ begin
 	-- Para las instrucciones productoras de loads
 	-- Si rs (Reg_Rs_EX) es igual a lo que se va escribir en memoria (RW_WB) y se va a escribir en memoria (RegWrite_WB) y que no hay parada (V=1) (valid_I_WB)
 	Corto_A_WB	<= '1' when ((Reg_Rs_EX = RW_WB) and (RegWrite_WB = '1') and (valid_I_WB = '1')) else '0';
-	Corto_B_WB	<= '1' when ((Reg_Rs_EX = RW_WB) and (RegWrite_WB = '1') and (valid_I_WB = '1')) else '0';
+	Corto_B_WB	<= '1' when ((Reg_Rt_EX = RW_WB) and (RegWrite_WB = '1') and (valid_I_WB = '1')) else '0';
 
 	-- Cuando hay un jal se va pasando a cada registro de cada etapa el valor de PC+4 para que se guarde en el registro que se indique
 	-- lo pasa que si luego hay una operación aritmetica con ese registro hay que darle el PC+4, entonces necesitamos una señal que indique
