@@ -178,7 +178,6 @@ COMPONENT Banco_EX
            	MemRead_EX : out  STD_LOGIC;
            	MemtoReg_EX : out  STD_LOGIC;
            	RegWrite_EX : out  STD_LOGIC;
-			-- New: for the porwarding unit (UA)
 			Reg_Rs_ID : in  std_logic_vector(4 downto 0);
 			Reg_Rs_EX : out std_logic_vector(4 downto 0);
 			--END new
@@ -224,7 +223,9 @@ COMPONENT Banco_EX
 			RegWrite_WB: IN std_logic;
 			RW_WB: IN  std_logic_vector(4 downto 0);
 			MUX_ctrl_A: out std_logic_vector(1 downto 0);
-			MUX_ctrl_B: out std_logic_vector(1 downto 0)
+			MUX_ctrl_B: out std_logic_vector(1 downto 0);
+			--Se añade el flag de la etapa de memoria del JAL
+			JAL_MEM: IN : in  STD_LOGIC;
 		);
 	end component;
 
@@ -546,10 +547,12 @@ begin
 	-- Inputs: Reg_Rs_EX, Reg_Rt_EX, RegWrite_MEM, RW_MEM, RegWrite_WB, RW_WB
 	-- Outputs: MUX_ctrl_A, MUX_ctrl_B
 	Unidad_Ant_INT: UA port map (	valid_I_MEM => valid_I_MEM, valid_I_WB => valid_I_WB, Reg_Rs_EX => Reg_Rs_EX, Reg_Rt_EX => Reg_Rt_EX, RegWrite_MEM => RegWrite_MEM,
-									RW_MEM => RW_MEM, RegWrite_WB => RegWrite_WB, RW_WB => RW_WB, MUX_ctrl_A => MUX_ctrl_A, MUX_ctrl_B => MUX_ctrl_B);
+									RW_MEM => RW_MEM, RegWrite_WB => RegWrite_WB, RW_WB => RW_WB, MUX_ctrl_A => MUX_ctrl_A, MUX_ctrl_B => MUX_ctrl_B, JAL_MEM => ext_signal_1_MEM);
 	-- forwarding Muxes
-	Mux_A: mux4_1 port map  ( DIn0 => BusA_EX, DIn1 => ALU_out_MEM, DIn2 => busW, DIn3 => x"00000000", ctrl => MUX_ctrl_A, Dout => Mux_A_out);
-	Mux_B: mux4_1 port map  ( DIn0 => BusB_EX, DIn1 => ALU_out_MEM, DIn2 => busW, DIn3 => x"00000000", ctrl => MUX_ctrl_B, Dout => Mux_B_out);
+
+	-- Se añade en la entrada 11 el bypass de memoria memoria del JAL hasta la etapa de ejecucion para el PC+4 (El caso de ARIT despues de JAL)
+	Mux_A: mux4_1 port map  ( DIn0 => BusA_EX, DIn1 => ALU_out_MEM, DIn2 => busW, DIn3 => ext_word_1_MEM, ctrl => MUX_ctrl_A, Dout => Mux_A_out);
+	Mux_B: mux4_1 port map  ( DIn0 => BusB_EX, DIn1 => ALU_out_MEM, DIn2 => busW, DIn3 => ext_word_1_MEM, ctrl => MUX_ctrl_B, Dout => Mux_B_out);
 	
 	----------------------------------------------------------------------------------
 	
@@ -622,7 +625,8 @@ begin
 	-- Initially only two inputs are used, and the other two are disconnected, but they can be used for the new instructions.	
 	-- To do this, the necessary connections must be made, and the control signal of the multiplexer must be set.	
 	-- Complete with your solution for JAL
-	ctrl_Mux4a1_escritura_BR <= '0'&MemtoReg_WB	;
+	-- Para indexar el MUX utilizamos el primer bit con JAL_WB para los casos 2 y 3
+	ctrl_Mux4a1_escritura_BR <= ext_signal_1_WB & MemtoReg_WB	;
 	mux_busW: mux4_1 port map (Din0 => ALU_out_WB, DIn1 => MDR, DIn2 => PC4_WB, DIn3 => PC4_WB, ctrl => ctrl_Mux4a1_escritura_BR, Dout => busW);
 	
 
