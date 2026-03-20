@@ -15,7 +15,11 @@ entity UD is
 			RW_Mem			: in  STD_LOGIC_VECTOR (4 downto 0);
 			IR_op_code	: in  STD_LOGIC_VECTOR (5 downto 0); -- operation code of the instruction in ID
          	salto_tomado			: in std_logic; -- 1 if there is a jump 0 otherwise
-         	--Nuevo
+         	
+			--Nuevo
+			-- TODO:(Preguntar en tutoria) Bit que indica si la instrucion en decode es un BEQ, diferenciandola de JAL y RET
+			-- Branch_ID:  in  STD_LOGIC;
+
          	ALU_ready : in std_logic; -- Indicates that the ALU can performs its operation in the current cycle,
          	JAL_EX : in std_logic; -- Indicates that the instruction in EX is a JAL
          	JAL_MEM : in std_logic; -- Indicates that the instruction in MEM is a JAL
@@ -37,7 +41,7 @@ CONSTANT BEQ_opcode : STD_LOGIC_VECTOR (5 downto 0) 	:= "000100";
 CONSTANT JAL_opcode : STD_LOGIC_VECTOR (5 downto 0) 	:= "000101";
 CONSTANT RET_opcode : STD_LOGIC_VECTOR (5 downto 0)	:= "000110";
 CONSTANT RTE_opcode : STD_LOGIC_VECTOR (5 downto 0) 	:= "001000";
-CONSTANT FI_opcode : STD_LOGIC_VECTOR (5 downto 0) 	:= "010000";
+-- CONSTANT FI_opcode : STD_LOGIC_VECTOR (5 downto 0) 	:= "010000";
 begin
 -------------------------------------------------------------------------------------------------------------------------------
 -- Kill_IF:
@@ -47,7 +51,11 @@ begin
 -- if a jump instruction does not have its operands available, it does not know whether to jump or not (for BEQ), or whether to jump in the case of RET. It doesn't matter what it says jump taken. You have to stop and wait until you have the operands
 -- if the instruction in ID is not valid, you have to ignore it when it tells you that it is going to jump (the same as if it tells you anything else), but pay attention to the valid instructions.
 -- Complete: activate Kill_IF where applicable
-		Kill_IF <= '0';
+
+-- Para Sergio: el resigos_datos_ID (Stall) aunque no llegue la condición de stall antes que el resultado de kill_if, hay que pensar
+-- que lo que sale de la señal es al final del flanco, es decir, stall ya esatará actualizado y kill_if cambiara de nuevo su valor
+-- que alomejor estaba en 1 pero luego al estar stall en 0 vuelve a 0 antes de terminar el flanco
+		Kill_IF <= '1' when ((salto_tomado = '1') AND (valid_I_ID = '1') AND riesgo_datos_ID = '0') else '0';
 -------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------
 -- Data dependencies:
@@ -58,35 +66,42 @@ begin
 -- Register use: identifies if the current instruction reads Rs or Rt
 	rs_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = LW_opcode) or (IR_op_code = SW_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = RET_opcode) or (IR_op_code = FI_opcode)) else '0';
 	-- Rt is not read in instructions: LW, NOP, RTE, RET and JAL
-	rt_read <= '0'; --complete
+	rt_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = SW_opcode)); --complete
 	-- Conditions for each dependency:
 	-- Notation: dep_rs_EX: data dependecy in Rs, with the instruction in EX stage.
-	dep_rs_EX 	<= 	'1' when ((valid_I_EX = '1') AND (valid_I_ID = '1') AND (Reg_Rs_ID = RW_EX) and (RegWrite_EX = '1') and (rs_read = '1'))	else '0';
-	--Complete:
-	dep_rs_Mem	<= 	'0';
+
+	-- Esto es un RAW, se lee despues de escribir en el banco de registro un ejemlo seria un add, beq (El dato en EX de add se necesita en el D de beq) distancia 2
+	dep_rs_EX 	<= 	'1' when ((valid_I_EX = '1') AND (valid_I_ID = '1') AND (Reg_Rs_ID = RW_EX) and (RegWrite_EX = '1') and (rs_read = '1')) else '0';
+	
+	-- Esto es una RAW esto ocurre cuando se intenta leer un dato que no se ha escrito aun en el bando de registros (sw - other_op - add) distancia 1
+	dep_rs_Mem	<= 	'1' when ((valid_I_MEM = '1') AND (valid_I_ID = '1') AND (Reg_Rs_ID = RW_Mem) and (RegWrite_Mem = '1') and (rs_read = '1'))	else '0';
 							
-	dep_rt_EX	<= 	'0';
+	-- Esto es una RAW en ejecucion hay un valor que se esta escribiendo en el banco en ese momento (sw - other_op - add)  distancia 1 
+	dep_rt_EX	<= 	'1' when ((valid_I_EX = '1') AND (valid_I_ID = '1') AND (Reg_Rt_ID = RW_EX) and (RegWrite_EX = '1') and (rt_read = '1')) else '0'
 								
-	dep_rt_Mem	<= 	'0';
+	-- Esto es un RAW, se lee despues de escribir en el banco de registro un ejemlo seria un add, beq (El dato en EX de add se necesita en el D de beq) distancia 2
+	dep_rt_Mem	<= 	'1' when ((valid_I_MEM = '1') AND (valid_I_ID = '1') AND (Reg_Rt_ID = RW_Mem) and (RegWrite_Mem = '1') and (rt_read = '1'))	else '0';
 
 -------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------
 -- Data hazards:
 	-- 1) lw_uso: 
-	ld_uso_rs <= 	'0';
-	ld_uso_rt <= 	'0';	
+	ld_uso_rs <= 	'1' when ((MemRead_EX = '1') AND (dep_rs_EX = '1')) else 0;
+	ld_uso_rt <= 	'1' when ((MemRead_EX = '1') AND (dep_rt_EX = '1')) else 0;
 									
 	-- 2) BEQ: BEQ reads the registers in ID, and we do not have a forwarding network in that stage
-	BEQ_rs	<= 	'0';
-	BEQ_rt	<= 	'0';
+	BEQ_rs	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else 0;
+	BEQ_rt	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rt_EX = '1') OR (dep_rt_Mem = '1'))) else 0;
 		
 	-- 3) RET: Similar to beq hazard, but taking into account that RET only uses Rs
 	
-	RET_rs	<= 	'0';
+	RET_rs	<=  '1' when ((IR_op_code = RET_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else 0;
 	
 	-- 4) JAL: if an instruction wants to read the register in which the JAL writes, will the short-circuit network work?
 	-- JAL does not write the ALU_out or MDR data, but the PC_WB. 
 	-- JAL: can be managed in several ways. One of them is to stop. It is not mandatory to stop in JALs, but if you do, use these signals. If you do not need to stop, just leave them at 0.
+
+	-- Al matar la instrucción de la pipeline inmediantamente despues del JAL, no  puede existir este tipo de dependecia 
 	JAL_uso_rs	<= 	'0';
 	JAL_uso_rt <= 	'0';
 	

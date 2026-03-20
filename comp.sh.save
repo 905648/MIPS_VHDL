@@ -1,4 +1,4 @@
-#!/bin/bash
+P#!/bin/bash
 
 # Script estilo AOC2/GHDL+GTKWave para la práctica 3
 # Compila el contenido del zip, simula el testbench y abre GTKWave.
