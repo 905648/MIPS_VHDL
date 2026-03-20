@@ -64,7 +64,8 @@ begin
 -- 	First detects which operands are used
 -- 	Second looks for dependencies
 -- Register use: identifies if the current instruction reads Rs or Rt
-	rs_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = LW_opcode) or (IR_op_code = SW_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = RET_opcode) or (IR_op_code = FI_opcode)) else '0';
+	-- rs_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = LW_opcode) or (IR_op_code = SW_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = RET_opcode) or (IR_op_code = FI_opcode)) else '0';
+	rs_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = LW_opcode) or (IR_op_code = SW_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = RET_opcode)) else '0';
 	-- Rt is not read in instructions: LW, NOP, RTE, RET and JAL
 	rt_read <= '1' when ((IR_op_code = ARIT_opcode) or (IR_op_code = BEQ_opcode) or (IR_op_code = SW_opcode)); --complete
 	-- Conditions for each dependency:
@@ -77,7 +78,7 @@ begin
 	dep_rs_Mem	<= 	'1' when ((valid_I_MEM = '1') AND (valid_I_ID = '1') AND (Reg_Rs_ID = RW_Mem) and (RegWrite_Mem = '1') and (rs_read = '1'))	else '0';
 							
 	-- Esto es una RAW en ejecucion hay un valor que se esta escribiendo en el banco en ese momento (sw - other_op - add)  distancia 1 
-	dep_rt_EX	<= 	'1' when ((valid_I_EX = '1') AND (valid_I_ID = '1') AND (Reg_Rt_ID = RW_EX) and (RegWrite_EX = '1') and (rt_read = '1')) else '0'
+	dep_rt_EX	<= 	'1' when ((valid_I_EX = '1') AND (valid_I_ID = '1') AND (Reg_Rt_ID = RW_EX) and (RegWrite_EX = '1') and (rt_read = '1')) else '0';
 								
 	-- Esto es un RAW, se lee despues de escribir en el banco de registro un ejemlo seria un add, beq (El dato en EX de add se necesita en el D de beq) distancia 2
 	dep_rt_Mem	<= 	'1' when ((valid_I_MEM = '1') AND (valid_I_ID = '1') AND (Reg_Rt_ID = RW_Mem) and (RegWrite_Mem = '1') and (rt_read = '1'))	else '0';
@@ -86,16 +87,16 @@ begin
 -------------------------------------------------------------------------------------------------------------------------------
 -- Data hazards:
 	-- 1) lw_uso: 
-	ld_uso_rs <= 	'1' when ((MemRead_EX = '1') AND (dep_rs_EX = '1')) else 0;
-	ld_uso_rt <= 	'1' when ((MemRead_EX = '1') AND (dep_rt_EX = '1')) else 0;
+	ld_uso_rs <= 	'1' when ((MemRead_EX = '1') AND (dep_rs_EX = '1')) else '0';
+	ld_uso_rt <= 	'1' when ((MemRead_EX = '1') AND (dep_rt_EX = '1')) else '0';
 									
 	-- 2) BEQ: BEQ reads the registers in ID, and we do not have a forwarding network in that stage
-	BEQ_rs	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else 0;
-	BEQ_rt	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rt_EX = '1') OR (dep_rt_Mem = '1'))) else 0;
+	BEQ_rs	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else '0';
+	BEQ_rt	<= 	'1' when ((IR_op_code = BEQ_opcode) AND ((dep_rt_EX = '1') OR (dep_rt_Mem = '1'))) else '0';
 		
 	-- 3) RET: Similar to beq hazard, but taking into account that RET only uses Rs
 	
-	RET_rs	<=  '1' when ((IR_op_code = RET_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else 0;
+	RET_rs	<=  '1' when ((IR_op_code = RET_opcode) AND ((dep_rs_EX = '1') OR (dep_rs_Mem = '1'))) else '0';
 	
 	-- 4) JAL: if an instruction wants to read the register in which the JAL writes, will the short-circuit network work?
 	-- JAL does not write the ALU_out or MDR data, but the PC_WB. 
