@@ -85,13 +85,21 @@ begin
 	sum_total_ext(31 downto 18) <= "00000000000000" when sum_total(17)='0' else "11111111111111";
 	
 	--It is important not to update the ACC register with invalid instructions
-	Acc_op <= '1' when (ALUctrl(2 downto 1) = "10") else '0'; --Acc operations: "100" and "101" 
+	-- (Señal para saber si es una MAC/MAC_ini o no)
+	Acc_op <= '1' when (ALUctrl(2 downto 1) = "10") else '0'; --Acc operations: "100" and "101"  
+
 	-- load_acc <= Acc_op and valid_I_EX; 
+	-- (Señal para saber si es MAC o MAC_ini)
 	MAC_start <=   '1' when (ALUctrl(0) = '1') else '0'; -- If ALUCtrl = "101" the accumulation register is restarted
 	
-	ACC_input <= signed(sum_total_ext_out) when (MAC_start = '1')
-             else signed(sum_total_ext_out) + signed(ACC_out);
+	-- (Entrada del registro y salida de la ALU para MAC)
+	-- Si es MAC_ini usará la salida del resultado de la suma donde luego se transformará en std_logic_vector en el switch de abajo para la salida de la ALU y para cargar en ACC_register
+	-- Si es MAC cogerá la salida del registro que guarda la suma de los productos y lo sumará con ACC ya que tarda 3 ciclos y no 2 como MAC_ini
+	ACC_input <= sum_total_ext when (MAC_start = '1')
+				 else signed(sum_total_ext_out) + signed(ACC_out);
+
 	--reset is currentlly unused in the ALU, but it will be needed if it becomes multicycle
+	-- Registro acumulador ACC
 	ACC_register: reg 	generic map (size => 32)
 						port map (	Din => std_logic_vector(ACC_input), clk => clk, reset => '0', load => load_acc, Dout => ACC_out);
 
@@ -114,10 +122,12 @@ begin
 	MAC_state_register: reg generic map (size => 2)
 							port map (	Din => next_state, clk => clk, reset => '0', load => '1', Dout => state);
 	
-	UC_outputs : process(state, Acc_op, MAC_start)
+
+	-- FSM (Finite State Machine)
+	-- Maquina de estados finitas para ir controlando los estados de la MAC
+	UC_outputs : process(state, Acc_op, MAC_start, valid_I_EX)
 	begin
-		-- By default we set all signals to 0 which is the value that guarantees
-		-- that we do not alter anything.
+		-- Poner valores por defecto de ciertas señales cada vez que se active
 		load_mul <= '0';
 		load_add <= '0';
 		ready    <= '0';
@@ -125,33 +135,31 @@ begin
 
 		CASE state IS
 			WHEN MAC_MUL =>
-				load_mul <= '1';
-			
-				IF (Acc_op = '1') THEN
+				IF (valid_I_EX = '1' and Acc_op = '1') THEN	-- si es mac cargamos en los registros de multiplicación y saltamos al siguiente estado
+					load_mul <= '1';
 					next_state <= MAC_ADD;
-				ELSE
+				ELSE -- otra operación que se hará en un ciclo, ready a 1 y volvemos al estado inicial
 					ready <= '1';
 					next_state <= MAC_MUL;
 				END IF;
 
-			WHEN MAC_ADD =>
-				load_acc <= MAC_start;
-				ready    <= MAC_start;
+			WHEN MAC_ADD => -- Se han sumado las multiplicaciones 
+				load_acc <= MAC_start; -- Si es mac_ini se cargará directamente en el registro ACC
+				ready    <= MAC_start; -- Si es mac_ini ya habrá terminado la ALU y ready será 1
 
-				IF (MAC_start = '1') THEN
+				IF (MAC_start = '1') THEN -- Si es mac_ini se vuelve al estado inicial
 					next_state <= MAC_MUL;
-				ELSE
+				ELSE -- Si es mac normal lo cargamos en el registro de suma de los productos y se pasa al tercer estado
 					load_add <= '1';
 					next_state <= MAC_ACC_ADD;
 				END IF;
 
-			WHEN MAC_ACC_ADD =>
+			WHEN MAC_ACC_ADD => -- Sumar con el acumulador (ACC), poner ready a 1 (ya terminó), guardar en el acumulador y volver al estado inicial
 				load_acc <= '1';
 				ready    <= '1';
 				next_state <= MAC_MUL;
 
 			WHEN OTHERS =>
-				null;
 		END CASE;
 	end process;
 				
@@ -161,9 +169,8 @@ begin
 				else DA AND DB when (ALUctrl="010")
 				else DA OR DB when (ALUctrl="011")
 				else std_logic_vector(ACC_input) when (ALUctrl(2 downto 1) = "10") 
-
 				else "00000000000000000000000000000000";
 	Dout <= Dout_internal;
 	-- to be updated:
-	-- ready <= load_acc or ALUctrl(2) = '0';
+	-- ready <= load_acc or ALUctrl(2) = '0'; -- Contemplado en la FSM
 end Behavioral;
