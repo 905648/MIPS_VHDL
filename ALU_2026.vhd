@@ -32,7 +32,7 @@ end ALU_Vector_MAC;
 architecture Behavioral of ALU_Vector_MAC is
 
 component reg is
-    generic (size: natural := 32);  -- por defecto son de 32 bits, pero se puede usar cualquier tamaño
+    generic (size: natural := 32);  -- por defecto son de 32 bits, pero se puede usar cualquier tamaï¿½o
 	Port ( Din : in  STD_LOGIC_VECTOR (size -1 downto 0);
            clk : in  STD_LOGIC;
 		   reset : in  STD_LOGIC;
@@ -41,21 +41,31 @@ component reg is
 end component;
 
 signal Dout_internal: STD_LOGIC_VECTOR (31 downto 0);
+-- SeÃ±al para la maquina de estados de la mac
+signal next_state: STD_LOGIC_VECTOR (1 downto 0);
+signal state: STD_LOGIC_VECTOR (1 downto 0);
 signal ACC_out : STD_LOGIC_VECTOR (31 downto 0) := X"00000000";
 signal ACC_input, sum_total_ext: Signed (31 downto 0);
+signal sum_total_ext_out: STD_LOGIC_VECTOR (31 downto 0);
 signal prod0, prod1, prod2, prod3 : Signed(15 downto 0);
+signal prod0_out, prod1_out, prod2_out, prod3_out : STD_LOGIC_VECTOR(15 downto 0);
 signal sum1, sum2 : Signed(16 downto 0);
 signal sum_total : Signed(17 downto 0);
-signal load_acc, Acc_op, MAC_start : STD_LOGIC;
-begin
+signal load_acc, load_mul, load_add, Acc_op, MAC_start : STD_LOGIC;
+
+-- to improve readability
+CONSTANT MAC_MUL 	 : STD_LOGIC_VECTOR (1 downto 0) 	:= "00";
+CONSTANT MAC_ADD 	 : STD_LOGIC_VECTOR (1 downto 0) 	:= "01";
+CONSTANT MAC_ACC_ADD : STD_LOGIC_VECTOR (1 downto 0) 	:= "10";
+begin	
 -- IMPORTANT
 -- VHDL is strongly typed.
 -- In VHDL, types do not just describe the size of a signal, they describe its meaning. 
--- A std_logic_vector means “a bundle of bits,” nothing more. 
--- A signed signal means “a two's complement number.” Because the language is strongly typed, VHDL won’t let you accidentally treat raw bits as a number or mix numeric and non-numeric types without being explicit.
--- In VHDL, you need to use the signed type for C2 (two’s-complement) arithmetic because arithmetic operators like +, -, and comparisons are only numerically defined for the signed and unsigned types in numeric_std, not for std_logic_vector. 
+-- A std_logic_vector means ï¿½a bundle of bits,ï¿½ nothing more. 
+-- A signed signal means ï¿½a two's complement number.ï¿½ Because the language is strongly typed, VHDL wonï¿½t let you accidentally treat raw bits as a number or mix numeric and non-numeric types without being explicit.
+-- In VHDL, you need to use the signed type for C2 (twoï¿½s-complement) arithmetic because arithmetic operators like +, -, and comparisons are only numerically defined for the signed and unsigned types in numeric_std, not for std_logic_vector. 
 -- A std_logic_vector is just a collection of bits with no inherent numerical meaning, so the compiler has no way to know whether those bits represent a positive or negative number or how to interpret the sign bit.
--- By converting the operands to signed, you explicitly tell VHDL to interpret the MSB as the sign bit and to perform proper two’s-complement arithmetic. 
+-- By converting the operands to signed, you explicitly tell VHDL to interpret the MSB as the sign bit and to perform proper twoï¿½s-complement arithmetic. 
 -- After the calculation, the result is typically converted back to std_logic_vector to store it in a register because registers and ports are often defined as std_logic_vector for generality and compatibility with other logic, interfaces, and synthesis tools. 
 -- This separation keeps arithmetic correct and unambiguous while still allowing flexible storage and data movement.
 -- NOTE: If you add additional registers you will have to adjust types
@@ -67,31 +77,93 @@ begin
 	prod1 <= signed(DA(15 downto 8))  * signed(DB(15 downto 8));
 	prod2 <= signed(DA(23 downto 16)) * signed(DB(23 downto 16));
 	prod3 <= signed(DA(31 downto 24)) * signed(DB(31 downto 24));
-	sum1 <= (prod0(15) & prod0) + (prod1(15) & prod1);
-	sum2 <= (prod2(15) & prod2) + (prod3(15) & prod3);
+
+	sum1 <= signed(prod0_out(15) & prod0_out) + signed(prod1_out(15) & prod1_out);
+	sum2 <= signed(prod2_out(15) & prod2_out) + signed(prod3_out(15) & prod3_out);
 	sum_total <= (sum1(16) & sum1) + (sum2(16) & sum2);
 	sum_total_ext(17 downto 0) <= sum_total;
 	sum_total_ext(31 downto 18) <= "00000000000000" when sum_total(17)='0' else "11111111111111";
 	
 	--It is important not to update the ACC register with invalid instructions
 	Acc_op <= '1' when (ALUctrl(2 downto 1) = "10") else '0'; --Acc operations: "100" and "101" 
-	load_acc <= Acc_op and valid_I_EX; 
+	-- load_acc <= Acc_op and valid_I_EX; 
 	MAC_start <=   '1' when (ALUctrl(0) = '1') else '0'; -- If ALUCtrl = "101" the accumulation register is restarted
 	
-	ACC_input	 <= 	sum_total_ext when (MAC_start = '1')
-						else sum_total_ext + signed(ACC_out);	
+	ACC_input <= signed(sum_total_ext_out) when (MAC_start = '1')
+             else signed(sum_total_ext_out) + signed(ACC_out);
 	--reset is currentlly unused in the ALU, but it will be needed if it becomes multicycle
 	ACC_register: reg 	generic map (size => 32)
 						port map (	Din => std_logic_vector(ACC_input), clk => clk, reset => '0', load => load_acc, Dout => ACC_out);
+
+	-- NUEVOS REGISTROS PARA LA ALU MULTICICLO
+	--Registros de multiplicaciÃ³n						
+	MUL_register_1: reg generic map (size => 16)
+						port map (	Din => std_logic_vector(prod0), clk => clk, reset => '0', load => load_mul, Dout => prod0_out);
+	MUL_register_2: reg generic map (size => 16)
+						port map (	Din => std_logic_vector(prod1), clk => clk, reset => '0', load => load_mul, Dout => prod1_out);
+	MUL_register_3: reg generic map (size => 16)
+						port map (	Din => std_logic_vector(prod2), clk => clk, reset => '0', load => load_mul, Dout => prod2_out);
+	MUL_register_4: reg generic map (size => 16)
+						port map (	Din => std_logic_vector(prod3), clk => clk, reset => '0', load => load_mul, Dout => prod3_out);
+
+	--Registro de la suma del la mac
+	ADD_register: reg generic map (size => 32)
+						port map (	Din => std_logic_vector(sum_total_ext), clk => clk, reset => '0', load => load_add, Dout => sum_total_ext_out);
+
+	--Registro del estado de la mac
+	MAC_state_register: reg generic map (size => 2)
+							port map (	Din => next_state, clk => clk, reset => '0', load => '1', Dout => state);
 	
+	UC_outputs : process(state, Acc_op, MAC_start)
+	begin
+		-- By default we set all signals to 0 which is the value that guarantees
+		-- that we do not alter anything.
+		load_mul <= '0';
+		load_add <= '0';
+		ready    <= '0';
+		load_acc <= '0';
+
+		CASE state IS
+			WHEN MAC_MUL =>
+				load_mul <= '1';
+			
+				IF (Acc_op = '1') THEN
+					next_state <= MAC_ADD;
+				ELSE
+					ready <= '1';
+					next_state <= MAC_MUL;
+				END IF;
+
+			WHEN MAC_ADD =>
+				load_acc <= MAC_start;
+				ready    <= MAC_start;
+
+				IF (MAC_start = '1') THEN
+					next_state <= MAC_MUL;
+				ELSE
+					load_add <= '1';
+					next_state <= MAC_ACC_ADD;
+				END IF;
+
+			WHEN MAC_ACC_ADD =>
+				load_acc <= '1';
+				ready    <= '1';
+				next_state <= MAC_MUL;
+
+			WHEN OTHERS =>
+				null;
+		END CASE;
+	end process;
+				
 	
 	Dout_internal <= 	DA + DB when (ALUctrl="000") 
 				else DA - DB when (ALUctrl="001") 
 				else DA AND DB when (ALUctrl="010")
 				else DA OR DB when (ALUctrl="011")
-				else std_logic_vector(ACC_input) when (ALUctrl(2 downto 1) = "10")
+				else std_logic_vector(ACC_input) when (ALUctrl(2 downto 1) = "10") 
+
 				else "00000000000000000000000000000000";
 	Dout <= Dout_internal;
 	-- to be updated:
-	ready <= '1';
+	-- ready <= load_acc or ALUctrl(2) = '0';
 end Behavioral;
