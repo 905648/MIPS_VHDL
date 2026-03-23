@@ -1,3 +1,4 @@
 WORK/*
 Makefile
 testbench
+e~testbench.o
