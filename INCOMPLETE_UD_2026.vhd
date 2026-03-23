@@ -125,7 +125,7 @@ begin
 		-- ADD R6, R1, R4 	    F  D  E  E  E  E  E  M  W
 		-- In this way ADD R6 can perform its anticipation. Writing the same data several times does not consume energy, so there is no real penalty either. However, if you don't want to write the same data multiple times to BR, you can disable writing to the register bank when the mips is stopped.
 -- stall_MIPS_internal is defined to be readable in the code (in vhdl the outputs of an entity cannot be read inside the entity. 
-	stall_MIPS_internal <= (not(IO_MEM_ready)and valid_I_MEM) or not(ALU_ready and valid_I_EX); -- Añadir ALU ready como lo pide en el proyecto cuando haya una mac
+	stall_MIPS_internal <= (not(IO_MEM_ready)and valid_I_MEM) or (not(ALU_ready) AND valid_I_EX); -- Añadir ALU ready como lo pide en el proyecto cuando haya una mac
 	stall_MIPS <= stall_MIPS_internal;
 -------------------------------------------------------------------------------------------------------------------------------
 end Behavioral;
