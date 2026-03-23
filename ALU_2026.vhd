@@ -46,12 +46,12 @@ signal next_state: STD_LOGIC_VECTOR (1 downto 0);
 signal state: STD_LOGIC_VECTOR (1 downto 0);
 signal ACC_out : STD_LOGIC_VECTOR (31 downto 0) := X"00000000";
 signal ACC_input, sum_total_ext: Signed (31 downto 0);
-signal sum_total_ext_out: STD_LOGIC_VECTOR (31 downto 0);
+signal sum_total_ext_out: STD_LOGIC_VECTOR (31 downto 0); -- Añadido para salida de los registros
 signal prod0, prod1, prod2, prod3 : Signed(15 downto 0);
-signal prod0_out, prod1_out, prod2_out, prod3_out : STD_LOGIC_VECTOR(15 downto 0);
+signal prod0_out, prod1_out, prod2_out, prod3_out : STD_LOGIC_VECTOR(15 downto 0); -- Añadido para salida de los registros
 signal sum1, sum2 : Signed(16 downto 0);
 signal sum_total : Signed(17 downto 0);
-signal load_acc, load_mul, load_add, Acc_op, MAC_start : STD_LOGIC;
+signal load_acc, load_mul, load_add, Acc_op, MAC_start : STD_LOGIC; -- Añadido load_mul y laod_add para cargar en los nuevos registros
 
 -- to improve readability
 CONSTANT MAC_MUL 	 : STD_LOGIC_VECTOR (1 downto 0) 	:= "00";
@@ -93,6 +93,7 @@ begin
 	MAC_start <=   '1' when (ALUctrl(0) = '1') else '0'; -- If ALUCtrl = "101" the accumulation register is restarted
 	
 	-- (Entrada del registro y salida de la ALU para MAC)
+	-- Es una MUX del final de la ALU para elegir la salida
 	-- Si es MAC_ini usará la salida del resultado de la suma donde luego se transformará en std_logic_vector en el switch de abajo para la salida de la ALU y para cargar en ACC_register
 	-- Si es MAC cogerá la salida del registro que guarda la suma de los productos y lo sumará con ACC ya que tarda 3 ciclos y no 2 como MAC_ini
 	ACC_input <= sum_total_ext when (MAC_start = '1')
@@ -123,6 +124,18 @@ begin
 							port map (	Din => next_state, clk => clk, reset => '0', load => '1', Dout => state);
 	
 
+
+	State_reg: process (clk)
+	   begin
+	      if (clk'event and clk = '1') then
+	         if (reset = '1') then
+	            state <= MAC_MUL;
+	         else
+	            state <= next_state;
+	         end if;        
+	      end if;
+	   end process;
+	   
 	-- FSM (Finite State Machine)
 	-- Maquina de estados finitas para ir controlando los estados de la MAC
 	UC_outputs : process(state, Acc_op, MAC_start, valid_I_EX)
@@ -160,6 +173,8 @@ begin
 				next_state <= MAC_MUL;
 
 			WHEN OTHERS =>
+				next_state <= MAC_MUL;
+				ready <= '1';
 		END CASE;
 	end process;
 				

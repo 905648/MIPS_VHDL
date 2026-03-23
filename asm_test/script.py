@@ -26,71 +26,96 @@ def ensamblador_a_hex(instruccion):
     try:
         partes = instruccion.replace(',', ' ').split()
         if not partes:
-            return "00000000"  # NOP por defecto para líneas vacías
-        
+            return "00000000"
+
         opcode = partes[0].lower()
-        
-        # Definir los opcodes
+
         opcodes = {
             'nop': '000000',
             'add': '000001',
+            'mac': '000001',
+            'mac_ini': '000001',
+            'and': '000001',
+            'or': '000001',
+            'mov': '000001',
             'lw': '000010',
             'sw': '000011',
             'beq': '000100',
             'jal': '000101',
             'ret': '000110',
-            'lw_inc': '010000',  # Nueva instrucción
-            'rte': '001000'  # Nueva instrucción
+            'lw_inc': '010000',
+            'rte': '001000'
         }
-        
-        # Inicializar campos
+
+        functs = {
+            'add': '00000000000',
+            'mov': '00000000000',   # mov rd, rs  -> add rd, rs, r0
+            'and': '00000000010',
+            'or':  '00000000011',
+            'mac': '00000000100',
+            'mac_ini': '00000000101'
+        }
+
         rs = '00000'
         rt = '00000'
         rd = '00000'
         imm = '0000000000000000'
-        
-        if opcode == 'nop'  or opcode == 'rte':
-            pass  # Todos los campos ya están en 0
-        
+
+        if opcode in ['nop', 'rte']:
+            pass
+
         elif opcode == 'ret':
             rs = format(int(partes[1][1:]), '05b')
-        
-        elif opcode == 'add':
+
+        elif opcode in ['add', 'and', 'or', 'mac', 'mac_ini']:
+            # formato: op rd, rs, rt
             rd = format(int(partes[1][1:]), '05b')
             rs = format(int(partes[2][1:]), '05b')
             rt = format(int(partes[3][1:]), '05b')
-        
-        elif opcode in ['lw', 'sw', 'lw_inc']:  # Modificado para incluir lw_inc
+
+        elif opcode == 'mov':
+            # mov rd, rs  --> add rd, rs, r0
+            rd = format(int(partes[1][1:]), '05b')
+            rs = format(int(partes[2][1:]), '05b')
+            rt = '00000'
+
+        elif opcode in ['lw', 'sw', 'lw_inc']:
             rt = format(int(partes[1][1:]), '05b')
             imm_rs = partes[2].split('(')
-            imm = format(int(imm_rs[0]), '016b')
+            imm_val = int(imm_rs[0], 0)
+            if imm_val < 0:
+                imm_val = (1 << 16) + imm_val
+            imm = format(imm_val & 0xFFFF, '016b')
             rs = format(int(imm_rs[1][1:-1]), '05b')
-        
+
         elif opcode == 'beq':
             rt = format(int(partes[1][1:]), '05b')
             rs = format(int(partes[2][1:]), '05b')
-            imm_val = int(partes[3])
+            imm_val = int(partes[3], 0)
             if imm_val < 0:
-                imm_val = (1 << 16) + imm_val  # Complemento a 2
-            imm = format(imm_val, '016b')
-        
+                imm_val = (1 << 16) + imm_val
+            imm = format(imm_val & 0xFFFF, '016b')
+
         elif opcode == 'jal':
             rt = format(int(partes[1][1:]), '05b')
-            imm = format(int(partes[2]), '016b')
-        
-        # Construir la instrucción binaria
+            imm_val = int(partes[2], 0)
+            if imm_val < 0:
+                imm_val = (1 << 16) + imm_val
+            imm = format(imm_val & 0xFFFF, '016b')
+
+        else:
+            return f"Error procesando '{instruccion}': instrucción no soportada"
+
         binario = opcodes[opcode] + rs + rt
-        
-        # Para add, usamos rd y ceros para el inmediato
-        if opcode == 'add':
-            binario += rd + '00000000000'
+
+        if opcode in ['add', 'and', 'or', 'mov', 'mac', 'mac_ini']:
+            binario += rd + functs[opcode]
         else:
             binario += imm
-        
-        # Convertir a hexadecimal
+
         hexadecimal = format(int(binario, 2), '08X')
-        
         return hexadecimal
+
     except Exception as e:
         return f"Error procesando '{instruccion}': {str(e)}"
 

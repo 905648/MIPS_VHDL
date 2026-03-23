@@ -399,7 +399,7 @@ begin
 	-- Interaction with exceptions:
 	-- If the whole processor is stopped we do not process the exception.
 	-- If we are stopped in ID, we do process it (we don't care about the instruction in ID, we will kill it).
-	load_pc <= '1';
+	load_pc <= not (stall_MIPS or stall_ID); 
 	
 	-- END COMPLETE;
 	------------------------------------------------------------------------------------
@@ -439,7 +439,7 @@ begin
 	-- COMPLETE:
 	--			stall_ID stops the execution of the ID stage, but it should also stop the previous stage. YOU HAVE TO INCLUDE THE CODE THAT DO THAT
 	-- 			It should also stop when stall_MIPS is active
-	load_ID <= '1';
+	load_ID <= not (stall_ID or stall_MIPS);
 
 	Banco_IF_ID: Banco_ID port map (	IR_in => IR_in, PC4_in => PC4, clk => clk, reset => reset_ID, load => load_ID, IR_ID => IR_ID, PC4_ID => PC4_ID, 
 										--Nuevo
@@ -520,7 +520,7 @@ begin
 	reset_EX <= (reset or Exception_accepted);
 	-- ID/EX Bank 
 	-- COMPLETE: If parar_MIPS is enabled, stop execution, and keep each instruction at its current stage.
-	load_EX <= '1';
+	load_EX <= not (stall_MIPS);
 	Banco_ID_EX: Banco_EX PORT MAP ( 	clk => clk, reset => reset_EX, load => load_EX, busA => busA, busB => busB, busA_EX => busA_EX, busB_EX => busB_EX,
 						RegDst_ID => RegDst_ID, ALUSrc_ID => ALUSrc_ID, MemWrite_ID => MemWrite_ID, MemRead_ID => MemRead_ID,
 						MemtoReg_ID => MemtoReg_ID, RegWrite_ID => RegWrite_ID, RegDst_EX => RegDst_EX, ALUSrc_EX => ALUSrc_EX,
@@ -572,7 +572,7 @@ begin
 	valid_I_MEM_in <= valid_I_EX and not(Exception_accepted);
 	-- New: if stopped at EX, no new instruction must be loaded into the MEM etap.
 	-- COMPLETE: If para_MIPS is enabled, stop execution, and keep each instruction in its current stage.
-	load_MEM <= '1';
+	load_MEM <= not (stall_MIPS);
 	Banco_EX_MEM: Banco_MEM PORT MAP ( 	ALU_out_EX => ALU_out_EX, ALU_out_MEM => ALU_out_MEM, clk => clk, reset => reset_MEM, load => load_MEM, MemWrite_EX => MemWrite_EX,
 										MemRead_EX => MemRead_EX, MemtoReg_EX => MemtoReg_EX, RegWrite_EX => RegWrite_EX, MemWrite_MEM => MemWrite_MEM, MemRead_MEM => MemRead_MEM,
 										MemtoReg_MEM => MemtoReg_MEM, RegWrite_MEM => RegWrite_MEM, 
@@ -610,7 +610,7 @@ begin
 	    	
 	--Nuevo: si paramos en EX no hay que cargar una instrucción nueva en la etap MEM
 	-- COMPLETE: If para_MIPS is enabled, stop execution, and keep each instruction at its current stage.
-	load_WB <= '1';
+	load_WB <= not (stall_MIPS);
 	
 	Banco_MEM_WB: Banco_WB PORT MAP ( 	ALU_out_MEM => ALU_out_MEM, ALU_out_WB => ALU_out_WB, Mem_out => Mem_out, MDR => MDR, clk => clk, reset => reset, load => load_WB, 
 										MemtoReg_MEM => MemtoReg_MEM, RegWrite_MEM => RegWrite_MEM, MemtoReg_WB => MemtoReg_WB, RegWrite_WB => RegWrite_WB, 
