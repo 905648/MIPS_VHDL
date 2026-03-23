@@ -10,7 +10,7 @@ TB="testbench"
 WAVE="testbench.ghw"
 GTKW="testbench.gtkw"
 STOPTIME="5us"
-
+RUN_MODE="${1:-exec}"  # "exec", "ghdl" o "auto"
 set -eu
 
 echo "==> 0) Preparando WORK"
@@ -21,8 +21,8 @@ rm -f Makefile "$TB" "$WAVE" 2>/dev/null || true
 echo "==> 1) Importando fuentes VHDL"
 VHDL_FILES=$(ls *.vhd 2>/dev/null || true)
 if [ -z "$VHDL_FILES" ]; then
-  echo "ERROR: no hay .vhd en este directorio"
-  exit 1
+echo "ERROR: no hay .vhd en este directorio"
+exit 1
 fi
 
 ghdl -i --ieee=synopsys -fexplicit --workdir="$WORKDIR" $VHDL_FILES
@@ -34,20 +34,22 @@ echo "==> 3) Compilando $TB"
 ghdl -m --ieee=synopsys -fexplicit --workdir="$WORKDIR" "$TB"
 
 echo "==> 4) Ejecutando -> $WAVE"
+if [ "$RUN_MODE" = "ghdl" ]; then
+ghdl -r --ieee=synopsys -fexplicit --workdir="$WORKDIR" "$TB" --stop-time="$STOPTIME" --wave="$WAVE"
+else
 ./"$TB" --stop-time="$STOPTIME" --wave="$WAVE"
-
-
+fi
 echo "==> 5) GTKWave"
 if command -v gtkwave >/dev/null 2>&1; then
-  if [ -f "$GTKW" ]; then
-    if gtkwave --help 2>&1 | grep -qi -- "--save"; then
-      gtkwave "$WAVE" --save="$GTKW" >/dev/null 2>&1 &
-    else
-      gtkwave "$WAVE" "$GTKW" >/dev/null 2>&1 &
-    fi
-  else
-    gtkwave "$WAVE" >/dev/null 2>&1 &
-  fi
+if [ -f "$GTKW" ]; then
+if gtkwave --help 2>&1 | grep -qi -- "--save"; then
+gtkwave "$WAVE" --save="$GTKW" >/dev/null 2>&1 &
 else
-  echo "INFO: gtkwave no está disponible en este entorno. Abre $WAVE manualmente."
+gtkwave "$WAVE" "$GTKW" >/dev/null 2>&1 &
+fi
+else
+gtkwave "$WAVE" >/dev/null 2>&1 &
+fi
+else
+echo "INFO: gtkwave no está disponible en este entorno. Abre $WAVE manualmente."
 fi
