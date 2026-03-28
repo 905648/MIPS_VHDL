@@ -103,7 +103,7 @@ begin
 	-- Registro acumulador ACC
 	ACC_register: reg 	generic map (size => 32)
 						port map (	Din => std_logic_vector(ACC_input), clk => clk, reset => '0', load => load_acc, Dout => ACC_out);
-
+					
 	-- NUEVOS REGISTROS PARA LA ALU MULTICICLO
 	--Registros de multiplicación						
 	MUL_register_1: reg generic map (size => 16)
@@ -179,7 +179,7 @@ begin
 	end process;
 				
 	
-	Dout_internal <= 	DA + DB when (ALUctrl="000") 
+	Dout_internal <= DA + DB when (ALUctrl="000") 
 				else DA - DB when (ALUctrl="001") 
 				else DA AND DB when (ALUctrl="010")
 				else DA OR DB when (ALUctrl="011")

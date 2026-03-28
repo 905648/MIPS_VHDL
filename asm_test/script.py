@@ -193,6 +193,11 @@ def main():
                 break
             if entrada:
                 procesar_entrada(entrada, instrucciones_hex)
+
+    instrucciones_hex.insert(0, "1021006C")  # Word 3: UNDEF vector
+    instrucciones_hex.insert(0, "1021005D")  # Word 2: Data Abort vector
+    instrucciones_hex.insert(0, "1021003E")  # Word 1: IRQ vector
+    instrucciones_hex.insert(0, "10210003")  # Word 0: Reset vector
     
     # Generar archivo RAM
     generar_archivo_ram(instrucciones_hex)
