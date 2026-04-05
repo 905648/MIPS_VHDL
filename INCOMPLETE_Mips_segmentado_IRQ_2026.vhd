@@ -510,7 +510,7 @@ begin
 	-- NEW
 	-- If we are stopped at ID, the instruction sent to the EX stage is set as invalid.
 	-- The EX instruction will be valid the next cycle, if the ID instruction is valid and there is no stop.
-	valid_I_EX_in	<=  valid_I_ID and not( stall_ID);				
+	valid_I_EX_in	<=  valid_I_ID and not(stall_ID);				
 				
 	-------------------------------------------------------------------------------------
 	-- if the operation is arithmetic (i.e.: IR_op_code= 000001) we use at the funct field
@@ -670,7 +670,7 @@ begin
 	-- Complete. Verify that the results match the simulation. Do not count the same stall twice in different counters. 
 	inc_cycles <= '1';--Done
 	inc_I <= (valid_I_WB AND not(stall_MIPS)); --Complete. Dynamic instruction count: valid instructions completing in WB. 
-	inc_data_stalls <= (stall_ID = '1' AND not(salto_tomado) AND not(stall_MIPS)); --Complete. Stall cycles due to data hazards
+	inc_data_stalls <= (stall_ID AND not(stall_MIPS)); --Complete. Stall cycles due to data hazards
 	--Un riesgo de control siempre está asociado a una instrucción que modifica el PC de forma no secuencial, es decir, cualquier instrucción que provoque un salto.
 	--Si hay salto tomado, implica un kill if, para que no se cuele la siguiente instrucción
 	inc_control_stalls <= Kill_IF AND not(stall_MIPS); --Complete.Stall cycles due to control hazards

@@ -138,13 +138,7 @@ begin
 	ADD_register: reg generic map (size => 32)
 						port map (	Din => std_logic_vector(sum_total_ext), clk => clk, reset => '0', load => load_add, Dout => sum_total_ext_out);
 
-	--Registro del estado de la mac
-	MAC_state_register: reg generic map (size => 2)
-							port map (	Din => next_state, clk => clk, reset => '0', load => '1', Dout => state);
-	
-
-
-	State_reg: process (clk)
+	MAC_state_register: process (clk)
 	   begin
 	      if (clk'event and clk = '1') then
 	         if (reset = '1') then
