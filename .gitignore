@@ -2,3 +2,5 @@ WORK/*
 Makefile
 testbench
 e~testbench.o
+documents/*
+asm_test/ram.txt
