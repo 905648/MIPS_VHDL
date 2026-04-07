@@ -110,10 +110,10 @@ begin
 	Shadow_ACC_proc: process(clk)
 	begin
 		if (clk'event and clk = '1') then
-			if (reset = '1') then
-				ACC_shadow <= (others => '0');
-			elsif (Exception_accepted = '1') then
+			if (Exception_accepted = '1') then
 				ACC_shadow <= ACC_out;
+			elsif (reset = '1') then
+				ACC_shadow <= (others => '0');
 			end if;
 		end if;
 	end process;

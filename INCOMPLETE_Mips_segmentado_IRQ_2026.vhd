@@ -565,7 +565,7 @@ begin
 	
 	--reset is currentlly unused in the ALU, but it will be needed if it becomes multicycle
 	ALU_MIPs: ALU_Vector_MAC PORT MAP ( clk => clk, reset => reset_EX, valid_I_EX => valid_I_EX, DA => Mux_A_out, DB => ALU_Src_out, ALUctrl => ALUctrl_EX, Dout => ALU_out_EX, ready => ALU_ready,
-										Exception_accepted => Exception_accepted, RTE_restore => RTE_ID);
+										Exception_accepted => Exception_accepted, RTE_restore => RTE_EX);
 	
 	
 	mux_dst: mux2_5bits port map (Din0 => Reg_Rt_EX, DIn1 => Reg_Rd_EX, ctrl => RegDst_EX, Dout => RW_EX);
