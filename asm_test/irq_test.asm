@@ -62,10 +62,7 @@ NOP
 NOP
 NOP
 
-; =============================================================================
-; Rutina de Servicio de IRQ (Words 64-79, @0x100)
-; =============================================================================
-
+; Rutina de Servicio de IRQ 
 ; -- Guardar contexto (push) --
 SW  R1, 0(R31)          ; 0FE10000 - Guarda R1 en MEM[R31]
 SW  R2, 4(R31)          ; 0FE20004 - Guarda R2 en MEM[R31+4]
