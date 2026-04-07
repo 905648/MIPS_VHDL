@@ -121,7 +121,7 @@ begin
 	-- Registro acumulador ACC (load también activo al restaurar desde shadow)
 	load_acc_final <= load_acc or RTE_restore;
 	ACC_register: reg 	generic map (size => 32)
-						port map (	Din => std_logic_vector(ACC_input), clk => clk, reset => '0', load => load_acc_final, Dout => ACC_out);
+						port map (	Din => std_logic_vector(ACC_input), clk => clk, reset => reset, load => load_acc_final, Dout => ACC_out);
 					
 	-- NUEVOS REGISTROS PARA LA ALU MULTICICLO
 	--Registros de multiplicación						
